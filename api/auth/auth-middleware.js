@@ -1,3 +1,21 @@
+const usersModel = require("../users/users-model");
+const {body,validationResult} = require("express-validator");
+
+const checkPayloadShape = [
+  body("username").isString().withMessage({message:"username is required",status:422}),
+  body("password").isString().withMessage({message:"Password must be longer than 3 chars",status:422}).isLength({min:3}).withMessage({message:"Password must be longer than 3 chars",status:422}),
+  (req,res,next)=>{
+    const errors = validationResult(req);
+    if(errors.isEmpty()){
+      return next();
+    }
+    else{
+      const {message,status} = errors.array()[0].msg;
+      return res.status(status).json({message});
+    }
+  }
+]
+
 /*
   If the user does not have a session saved in the server
 
@@ -6,8 +24,13 @@
     "message": "You shall not pass!"
   }
 */
-function restricted() {
-
+function restricted(req,res,next) {
+  if(req.session && req.session.user){
+    next();
+  }
+  else{
+    res.status(401).json({message:`You shall not pass!`});
+  }
 }
 
 /*
@@ -18,8 +41,15 @@ function restricted() {
     "message": "Username taken"
   }
 */
-function checkUsernameFree() {
-
+async function checkUsernameFree(req,res,next) {
+  const {username} = req.body;
+  const rows = await usersModel.findBy({username});
+  if(rows.length === 0){
+    next();
+  }
+  else{
+    res.status(422).json({message:"Username taken"});
+  }
 }
 
 /*
@@ -30,7 +60,16 @@ function checkUsernameFree() {
     "message": "Invalid credentials"
   }
 */
-function checkUsernameExists() {
+async function checkUsernameExists(req,res,next) {
+  const {username} = req.body;
+  const rows = await usersModel.findBy({username});
+  if(rows.length === 1){
+    req.user = rows[0];
+    next();
+  }
+  else{
+    res.status(401).json({message:`Invalid credentials`});
+  }
 
 }
 
@@ -42,8 +81,13 @@ function checkUsernameExists() {
     "message": "Password must be longer than 3 chars"
   }
 */
-function checkPasswordLength() {
 
-}
 
 // Don't forget to add these to the `exports` object so they can be required in other modules
+
+module.exports = {
+  restricted,
+  checkUsernameFree,
+  checkPayloadShape,
+  checkUsernameExists
+}
