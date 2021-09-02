@@ -20,7 +20,7 @@ const knexSessionStore = require("connect-session-knex")(sessions);
 
 const server = express();
 const config = {
-  name:"session-id",
+  name:"chocolatechip",
   secret:"keep it secret keep it safe",
   cookie:{
     maxAge:1000*60*60,

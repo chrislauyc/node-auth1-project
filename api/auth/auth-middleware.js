@@ -1,21 +1,20 @@
 const usersModel = require("../users/users-model");
-const yup = require("yup");
+const {body,validationResult} = require("express-validator");
 
-const schema = yup.object().shape({
-  username:yup.string().required("username is required"),
-  password:yup.string().required("password is required").length().min(3, "Password must be longer than 3 chars")
-});
-async function checkPayloadShape(req,res,next){
-  try{
-    const {username,password} = req.body;
-    await yup.reach(schema,"username",username);
-    await yup.reach(schema,"password",password);
-    next();
+const checkPayloadShape = [
+  body("username").isString().withMessage({message:"username is required",status:422}),
+  body("password").isString().withMessage({message:"Password must be longer than 3 chars",status:422}).isLength({min:3}).withMessage({message:"Password must be longer than 3 chars",status:422}),
+  (req,res,next)=>{
+    const errors = validationResult(req);
+    if(errors.isEmpty()){
+      return next();
+    }
+    else{
+      const {message,status} = errors.array()[0].msg;
+      return res.status(status).json({message});
+    }
   }
-  catch(err){
-    res.status(400).json({message:err.errors[0]});
-  }
-};
+]
 
 /*
   If the user does not have a session saved in the server
@@ -30,7 +29,7 @@ function restricted(req,res,next) {
     next();
   }
   else{
-    res.status(401).json({message:"You shall not pass!"});
+    res.status(401).json({message:`You shall not pass!`});
   }
 }
 
@@ -63,13 +62,13 @@ async function checkUsernameFree(req,res,next) {
 */
 async function checkUsernameExists(req,res,next) {
   const {username} = req.body;
-  const rows = usersModel.findBy({username});
+  const rows = await usersModel.findBy({username});
   if(rows.length === 1){
     req.user = rows[0];
     next();
   }
   else{
-    res.status(401).json({message:"Invalid credentials"});
+    res.status(401).json({message:`Invalid credentials`});
   }
 
 }
@@ -82,21 +81,13 @@ async function checkUsernameExists(req,res,next) {
     "message": "Password must be longer than 3 chars"
   }
 */
-async function checkPasswordLength(req,res,next) {
-  try{
-    await yup.reach(schema,"password",req.body.password);
-    next();
-  }
-  catch(err){
-    res.status(422).json({message:err.errors[0]});
-  }
-}
+
 
 // Don't forget to add these to the `exports` object so they can be required in other modules
 
 module.exports = {
   restricted,
   checkUsernameFree,
-  checkPasswordLength,
   checkPayloadShape,
+  checkUsernameExists
 }

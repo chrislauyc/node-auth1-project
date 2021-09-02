@@ -17,7 +17,7 @@ function findBy(filter) {
   resolves to the user { user_id, username } with the given user_id
  */
 function findById(user_id) {
-  return db("users").select("user_id","username").where({user_id});
+  return db("users").select("user_id","username").where({user_id}).first();
 }
 
 /**
